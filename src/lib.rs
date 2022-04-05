@@ -16,7 +16,7 @@ extern "C" {
     #[wasm_bindgen(js_namespace = performance)]
     fn mark(a: &str);
     #[wasm_bindgen(catch, js_namespace = performance)]
-    fn measure(name: String, startMark: String) -> Result<(), JsValue>;
+    fn measure(name: String, startMark: String, endMark: String) -> Result<(), JsValue>;
     #[wasm_bindgen(js_namespace = console, js_name = log)]
     fn log1(message: String);
     #[wasm_bindgen(js_namespace = console, js_name = log)]
@@ -352,7 +352,8 @@ impl<S: Subscriber + for<'a> LookupSpan<'a>> Layer<S> for WASMLayer {
                         thread_display_suffix(),
                         recorder,
                     ),
-                    mark_name,
+                    mark_name.clone(),
+                    mark_name
                 );
             }
         }
@@ -365,6 +366,8 @@ impl<S: Subscriber + for<'a> LookupSpan<'a>> Layer<S> for WASMLayer {
     fn on_exit(&self, id: &tracing::Id, ctx: Context<'_, S>) {
         if let Some(span_ref) = ctx.span(id) {
             let meta = span_ref.metadata();
+            let end_id = format!("{}-end", mark_name(id));
+            mark(&end_id);
             if let Some(debug_record) = span_ref.extensions().get::<StringRecorder>() {
                 let _ = measure(
                     format!(
@@ -375,6 +378,7 @@ impl<S: Subscriber + for<'a> LookupSpan<'a>> Layer<S> for WASMLayer {
                         debug_record,
                     ),
                     mark_name(id),
+                    end_id
                 );
             } else {
                 let _ = measure(
@@ -385,6 +389,7 @@ impl<S: Subscriber + for<'a> LookupSpan<'a>> Layer<S> for WASMLayer {
                         meta.module_path().unwrap_or("..."),
                     ),
                     mark_name(id),
+                    end_id
                 );
             }
         }
